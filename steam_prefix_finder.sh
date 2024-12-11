@@ -56,8 +56,8 @@ if [ ! -d "$SELECTED_PREFIX" ]; then
     exit 1
 fi
 
-# Construct the path to the AppData/Local directory for the selected game
-LOCAL_PATH="$SELECTED_PREFIX/drive_c/users/steamuser/AppData/Local/$SELECTED_GAME"
+# Construct the path to the AppData/Local directory
+LOCAL_PATH="$SELECTED_PREFIX/drive_c/users/steamuser/AppData/Local/"
 
 if [ ! -d "$LOCAL_PATH" ]; then
     echo "Local directory for game not found at: $LOCAL_PATH"
