@@ -64,8 +64,8 @@ if [ ! -d "$LOCAL_PATH" ]; then
     exit 1
 fi
 
-# Open Nemo at the local path
-nemo "$LOCAL_PATH"
+# Open Nemo at the local path and detach from terminal
+nohup nemo "$LOCAL_PATH" >/dev/null 2>&1 &
 
 echo "Opened Nemo at $LOCAL_PATH"
-
+exit 0
