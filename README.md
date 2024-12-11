@@ -4,6 +4,10 @@ ProtonFinder is a simple Bash script that scans your Steam library folders for P
 
 ---
 
+![](https://github.com/StoicaTielemans/ProtonFinder/blob/main/protonfinder.gif)
+
+---
+
 ## Features
 - Scans multiple Steam library folders for Proton prefixes.
 - Maps prefixes to game names for easy identification.
