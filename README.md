@@ -13,12 +13,13 @@ ProtonFinder is a simple Bash script that scans your Steam library folders for P
 - Maps prefixes to game names for easy identification.
 - Interactive game selection using `fzf`.
 - Opens the selected game folder in your Linux file manager.
+- Text-only mode with `--text`.
 
 ---
 
 ## How to Set Up
 
-### Create the Bash Script
+### Create and Install the Bash Script
 1. Clone this repository or manually create the script:
     ```bash
     nano protonfinder.sh
@@ -30,13 +31,18 @@ ProtonFinder is a simple Bash script that scans your Steam library folders for P
     chmod +x protonfinder.sh
     ```
 
+4. Move the script to `/bin` for ease of use:
+    ```bash
+    sudo mv protonfinder.sh /bin/protonfinder
+    ```
+
 ---
 
 ## How to Use
 
 1. Run the script:
     ```bash
-    ./protonfinder.sh
+    protonfinder
     ```
 
 2. Use the interactive menu (fzf) to select a game.
@@ -52,7 +58,7 @@ To include additional Steam library folders:
 
 1. Open the script in your editor:
     ```bash
-    nano protonfinder.sh
+    sudo nano /bin/protonfinder
     ```
 
 2. Add your custom path(s) to the `STEAM_FOLDERS` array:
@@ -74,6 +80,17 @@ To use a different file manager:
     ```bash
     # Example: Using Nautilus instead of Nemo
     nautilus "$LOCAL_PATH"
+    ```
+
+---
+
+## Text-Only Mode
+
+If you give the argument `--text` to the ProtonFinder script, it will only print all the games/applications it can find in the terminal. By default, it will only open `fzf` and `nemo` and not print anything for a cleaner terminal. 
+
+Run with `--text`:
+    ```bash
+    protonfinder --text
     ```
 
 ---
