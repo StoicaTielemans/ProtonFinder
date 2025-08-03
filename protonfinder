@@ -1,0 +1,158 @@
+#!/bin/bash
+STEAM_FOLDERS=(
+  "$HOME/.local/share/Steam/steamapps"
+  "/mnt/1TB_SSD/SteamLibrary/steamapps"
+)
+BOTTLES_FOLDERS=(
+  "$HOME/.var/app/com.usebottles.bottles/data/bottles/bottles"
+)
+
+PRINT_TEXT=false
+
+# Check for --text argument
+if [[ "$1" == "--text" ]]; then
+  PRINT_TEXT=true
+fi
+
+if $PRINT_TEXT; then
+  echo "Searching for prefixes in the following directories:"
+  echo "Steam Directories:"
+  for FOLDER in "${STEAM_FOLDERS[@]}"; do
+    echo "  $FOLDER"
+  done
+  echo "Bottles Directories:"
+  for FOLDER in "${BOTTLES_FOLDERS[@]}"; do
+    echo "  $FOLDER"
+  done
+  echo ""
+
+  echo "Steam Prefixes:"
+  for FOLDER in "${STEAM_FOLDERS[@]}"; do
+    if [ -d "$FOLDER/compatdata" ]; then
+      FOUND_PREFIXES=($(find "$FOLDER/compatdata" -type d -name "pfx" 2>/dev/null))
+      for PREFIX in "${FOUND_PREFIXES[@]}"; do
+        APP_ID=$(basename "$(dirname "$PREFIX")")
+        if [ -f "$HOME/.local/share/Steam/steamapps/appmanifest_${APP_ID}.acf" ]; then
+          GAME_NAME=$(grep -Po '(?<=^\t"name"\t\t").*(?="$)' "$HOME/.local/share/Steam/steamapps/appmanifest_${APP_ID}.acf")
+        elif [ -f "/mnt/1TB_SSD/SteamLibrary/steamapps/appmanifest_${APP_ID}.acf" ]; then
+          GAME_NAME=$(grep -Po '(?<=^\t"name"\t\t").*(?="$)' "/mnt/1TB_SSD/SteamLibrary/steamapps/appmanifest_${APP_ID}.acf")
+        else
+          GAME_NAME="Unknown Steam Game"
+        fi
+        echo "  Game: $GAME_NAME, Prefix: $PREFIX"
+      done
+    fi
+  done
+
+  echo -e "\nBottles Prefixes:"
+  for FOLDER in "${BOTTLES_FOLDERS[@]}"; do
+    if [ -d "$FOLDER" ]; then
+      FOUND_BOTTLES=($(ls "$FOLDER"))
+      for BOTTLE in "${FOUND_BOTTLES[@]}"; do
+        BOTTLE_PATH="$FOLDER/$BOTTLE"
+        if [ -d "$BOTTLE_PATH" ]; then
+          echo "  Bottle: $BOTTLE, Path: $BOTTLE_PATH"
+        fi
+      done
+    fi
+  done
+  exit 0
+fi
+
+STEAM_PREFIXES=()
+BOTTLES_PREFIXES=()
+
+for FOLDER in "${STEAM_FOLDERS[@]}"; do
+  if [ -d "$FOLDER/compatdata" ]; then
+    FOUND_PREFIXES=($(find "$FOLDER/compatdata" -type d -name "pfx" 2>/dev/null))
+    STEAM_PREFIXES+=("${FOUND_PREFIXES[@]}")
+  fi
+done
+
+for FOLDER in "${BOTTLES_FOLDERS[@]}"; do
+  if [ -d "$FOLDER" ]; then
+    FOUND_BOTTLES=($(ls "$FOLDER"))
+    for BOTTLE in "${FOUND_BOTTLES[@]}"; do
+      BOTTLE_PATH="$FOLDER/$BOTTLE"
+      if [ -d "$BOTTLE_PATH" ]; then
+        BOTTLES_PREFIXES+=("$BOTTLE_PATH")
+      fi
+    done
+  fi
+done
+
+if [ ${#STEAM_PREFIXES[@]} -eq 0 ] && [ ${#BOTTLES_PREFIXES[@]} -eq 0 ]; then
+  exit 1
+fi
+
+declare -A PREFIX_MAP
+for PREFIX in "${STEAM_PREFIXES[@]}"; do
+  APP_ID=$(basename "$(dirname "$PREFIX")")
+  if [ -f "$HOME/.local/share/Steam/steamapps/appmanifest_${APP_ID}.acf" ]; then
+    GAME_NAME=$(grep -Po '(?<=^\t"name"\t\t").*(?="$)' "$HOME/.local/share/Steam/steamapps/appmanifest_${APP_ID}.acf")
+  elif [ -f "/mnt/1TB_SSD/SteamLibrary/steamapps/appmanifest_${APP_ID}.acf" ]; then
+    GAME_NAME=$(grep -Po '(?<=^\t"name"\t\t").*(?="$)' "/mnt/1TB_SSD/SteamLibrary/steamapps/appmanifest_${APP_ID}.acf")
+  else
+    GAME_NAME="Unknown Steam Game"
+  fi
+  PREFIX_MAP["$GAME_NAME"]=$PREFIX
+done
+
+for BOTTLE_PATH in "${BOTTLES_PREFIXES[@]}"; do
+  BOTTLE_NAME=$(basename "$BOTTLE_PATH")
+  PREFIX_MAP["Bottle: $BOTTLE_NAME"]=$BOTTLE_PATH
+done
+
+COMBINED_KEYS=()
+for key in "${!PREFIX_MAP[@]}"; do
+  COMBINED_KEYS+=("$key")
+done
+
+SELECTED_ITEM=$(printf "%s\n" "${COMBINED_KEYS[@]}" | fzf --prompt="Select a Game/Application: ")
+
+if [ -z "$SELECTED_ITEM" ]; then
+  echo "No item selected."
+  exit 1
+fi
+
+if [[ "${PREFIX_MAP[$SELECTED_ITEM]+_}" ]]; then
+  SELECTED_PATH=${PREFIX_MAP["$SELECTED_ITEM"]}
+
+  if [[ "$SELECTED_PATH" == */compatdata/*/pfx ]]; then
+    LOCAL_PATH="$SELECTED_PATH/drive_c/users/steamuser/AppData/Local/"
+    if [ ! -d "$LOCAL_PATH" ]; then
+      echo "Local directory not found: $LOCAL_PATH"
+      exit 1
+    fi
+  else
+    LOCAL_PATH="$SELECTED_PATH/drive_c"
+    if [ ! -d "$LOCAL_PATH" ]; then
+      echo "drive_c directory not found: $LOCAL_PATH"
+      exit 1
+    fi
+  fi
+
+  # Open using xdg-open and fallback if needed
+  xdg-open "$LOCAL_PATH" >/dev/null 2>&1 || {
+    echo "xdg-open failed. Trying fallback file managers..."
+
+    if command -v dolphin >/dev/null 2>&1; then
+      dolphin "$LOCAL_PATH" &
+    elif command -v nautilus >/dev/null 2>&1; then
+      nautilus "$LOCAL_PATH" &
+    elif command -v thunar >/dev/null 2>&1; then
+      thunar "$LOCAL_PATH" &
+    elif command -v pcmanfm >/dev/null 2>&1; then
+      pcmanfm "$LOCAL_PATH" &
+    else
+      echo "No known file manager found. Please open manually: $LOCAL_PATH"
+    fi
+  }
+
+  echo "Opened file manager at: $LOCAL_PATH"
+else
+  echo "Selected item not found in prefix maps."
+  exit 1
+fi
+
+exit 0
